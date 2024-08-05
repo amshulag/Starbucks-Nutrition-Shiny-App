@@ -1,0 +1,202 @@
+---
+title: "Project 2: Nutritional Analysis of Starbucks Drinks"
+author: "Amshula Gajula"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+---
+
+### 1. Data Obtainment and Processing
+
+```{r, include = FALSE}
+#loading these packages as they will be used for graphing, creating tables, and in the functions and for loops
+library(tidyr)
+library(stringr)
+library(knitr)
+library(tidyverse)
+
+#reading in the data
+starbucks = read.csv("starbucks_drinks.csv")
+```
+
+For this project, I am using the Starbucks Drinks data set. I found this data set through a website called Kaggle, a site which has numerous data sets for public use. The data was obtained using the nutritional information of drinks from Starbucks. To read the data set into R, I used the read.csv function. The total fat, caffeine, vitamin A, vitamin C, vitamin D, and iron variables were read in as strings instead of a numeric value. When I tried to convert them to numeric values using as.numeric, NA values showed up because some of the values were "varies" and these converted to NAs. When evaluating relationships in my project, I will not use these variables as my primary variables.
+
+### 2. Purpose
+
+In the Starbucks data set, there are the different categories of drinks such as lattes and frappuccinos and the specific name of each drink. Then looking at each drink, the nutritional information is listed, such as how many calories, total grams of sugar, sodium, fats, carbohydrates, etc. I will be utilizing these variables to investigate the nutritional information for each drink at Starbucks. I chose this data set because many people buy Starbucks drinks daily and I wanted to examine how healthy the drinks are. I will specifically focus on the calories, carbohydrates, cholesterol, and sugar in each drink to see if the amount is above the recommended daily intake. This can help to understand exactly how much of our daily calories and consumption of other biochemical compounds can come from a single Starbucks drink.
+
+### 3. Data Description
+
+```{r, echo = FALSE}
+#creating a new data set with only the columns of my primary variables
+starbucks.drinks = starbucks[ , c(2,1,3,4,9,10,12)]
+
+#making a table to display my variables of interest and their description
+my.variables = 
+  tibble(Variable = c("Bevarage Name", "Bevarage Category", "Beverage Preparation", "Calories", "Carbohydrates", "Cholesterol", "Sugars"), 
+         Content = c("Lists what the name of the drink is", "Lists what category the drink is in", "Lists the size or milk type used in the drink", "States the total number of calories in the drink", "States the total number of carbohydrates in the drink in grams", "States the total number of cholesterol in the drink in milligrams", "States the total number of sugars in the drink in grams"), Missing.Values = c("None", "None", "None", "None", "None","None","None"))
+kable(my.variables, format = 'pipe', caption = 'Table of Variables of Interest and their Description', digits = 2)
+```
+
+My cleaned data includes 7 primary variables. The first is the beverage name, which lists the name of the drink. Next is the beverage category, which lists what category the drink is in. Then it is the beverage preparation, which lists the size or milk type used while preparing the drink. The next few variables describe the nutritional value for the drinks listed. I use calories, carbohydrates, cholesterol, and sugars which state the total number of calories in the drink, the total number of carbohydrates in the drink in grams, the total number of cholesterol in the drink in milligrams, and the total number of sugars in grams in the drink respectively. The beverage name, beverage category, and beverage preparation are categorical variables while calories, carbohydrates, cholesterol, and sugar are numerical. None of these variables have missing values.
+
+### 4. Creation of New Variables
+
+```{r, echo = FALSE}
+#using the mutate function to create a new variable that states if a drink is above the mean amount of calories of all Starbucks drinks
+starbucks.drinks = mutate(starbucks.drinks,
+       above.avg.calories = starbucks.drinks$Calories >= mean(starbucks.drinks$Calories))
+
+#using a for loop and if else statement to create a new variable that states if the drink is above or below the recommended amount of daily sugar intake (daily intake value is from References section)
+a = c()
+for (i in 1:length(starbucks.drinks$Sugars..g.)){
+  if(starbucks.drinks$Sugars..g.[i]>=24){
+    a = append(a, "Above")
+  }
+  else{
+    a = append(a, "Below")
+  }
+  
+}
+
+#adding the variable to the main data set
+starbucks.drinks$Daily.Intake.Sugar = a
+
+#using a for loop and if else statement to create a new variable that states if the drink is above or below the recommended amount of daily cholesterol intake (daily intake value is from References section)
+b = c()
+for (i in 1:length(starbucks.drinks$Cholesterol..mg.)){
+  if(starbucks.drinks$Sugars..g.[i]>=300){
+    b = append(b, "Above")
+  }
+  else{
+    b = append(b, "Below")
+  }
+  
+}
+
+#adding the variable to the main data set
+starbucks.drinks$Daily.Intake.Cholesterol = b
+
+#making a table to display my newly created variables of interest, their description, and derivation
+new.variables = 
+  tibble( Variable = c("Above Average Calories", "Daily Intake of Sugar", "Daily Intake of Cholesterol"),
+          Content = c("If stated TRUE, that means the drink has the average or above average number of calories and if stated FALSE the drink has below the average number of calories", "If stated Above, that means the drink has above the reccommened daily intake of sugar and if stated Below, the drink has below the reccommened daily intake of sugar", "If stated Above, that means the drink has above the reccommened daily intake of cholesterol and if stated Below, the drink has below the reccommened daily intake of cholesterol"),
+          Derivation = c("Found by selecting all drinks that have the same or higher than the mean number of calories and marking them TRUE; all drinks below the mean have been marked FALSE", "Found by using a for loop and if else statement to see if the drink has higher than the reccomened amount of daily intake sugar. If it is greater or equal to 24 grams (reccommened daily intake of sugar for women), it is marked Above, and if below 24 grams, it is marked Below", "Found by using a for loop and if else statement to see if the drink has higher than the reccomened amount of daily intake cholesterol. If it is greater or equal to 300 milligrams (reccommened daily intake of cholesterol for men and women without risk for heart disease), it is marked Above, and if below 300 milligrams, it is marked Below"),
+          Missing.Values = c("None", "None", "None"))
+kable(new.variables, format = 'pipe', caption = 'Table of Newly Created Variables', digits = 2)
+```
+
+### 5. Five Interesting Univariate Plots
+
+```{r, echo = FALSE}
+#creating a function to graph univariate box plots
+graph.plot <- function(variable, color.want = "black", fill.want = "burlywood", title.want = "Amount of Calories in Starbucks Drinks", y.want = "Calories" ){
+  ggplot() + geom_boxplot(aes(y=variable), col = color.want, fill = fill.want) + labs(title = title.want, y = y.want)
+}
+
+#using my function to plot calories
+graph.plot(starbucks.drinks$Calories)
+```
+
+The graph above shows the distribution of the number of calories found in all of the Starbucks drinks. Using this graph, it can be seen that the highest value of calories is a little bit above 500 in a drink. The recommended amount of calories in a day is on average 2,000 so this implies that the highest caloric drink at Starbucks could potentially make up 25% of a person's daily caloric intake.
+
+```{r, echo = FALSE}
+#using my function to plot carbohydrates
+graph.plot(starbucks.drinks$Total.Carbohydrates..g., fill.want = "chocolate4", title.want = "Amount of Carbohydrates in Starbucks Drinks", y.want = "Carbhoydrates in Grams")
+```
+
+The graph above shows the distribution of the number of carbohydrates found in all of the Starbucks drinks. Using this graph, it can be seen that the highest value of carbohydrates is close to 400 grams in a drink. The recommended amount of carbohydrates in a day is about 225-325 grams, so this implies that the drink with the highest amount of carbohydrates is above the recommended daily intake of carbohydrates.
+
+```{r, echo = FALSE}
+#using my function to plot cholesterol
+graph.plot(starbucks.drinks$Cholesterol..mg., fill.want = "bisque1", title.want = "Amount of Cholesterol in Starbucks Drinks", y.want = "Cholesterol in Milligrams")
+```
+
+The graph above shows the distribution of the number of cholesterol found in all of the Starbucks drinks. Using this graph, it can be seen that the highest value of cholesterol is close to 90 milligrams in a drink, which is below the recommended daily amount of 300 milligrams of cholesterol.
+
+```{r, echo = FALSE}
+#using my function to plot sugar
+graph.plot(starbucks.drinks$Sugars..g., fill.want = "burlywood3", title.want = "Amount of Sugar in Starbucks Drinks", y.want = "Sugar in Grams")
+```
+
+The graph above shows the distribution of the number of sugar found in all of the Starbucks drinks. Using this graph, it can be seen that the highest value of sugar is above 80 grams in a drink which is higher than the recommenced daily amount of sugar (24 grams for women).
+
+```{r,echo = FALSE}
+#plotting a categorical variable using barplots
+ggplot() + geom_bar(aes(x=starbucks.drinks$above.avg.calories), col = 'black', fill = 'burlywood') + labs(title = "Number of Drinks that Have Above Average Amount of Calories", x = "True or False", y = "Number of Drinks")
+```
+
+The graph above shows how many drinks have a higher than the mean amount of calories in Starbucks drinks. It can be seen that there are more drinks at Starbucks that have less than the mean amount of calories in Starbucks drinks than there are drinks that are above the average amount of calories.
+
+### 6. Five Interesting Multivariate Plots
+
+```{r, echo = FALSE}
+#creating another function to graph a bivariate numerical graph
+bivariate.graph <- function(variable.1, variable.2, color.want = "darkgreen", title.want = "Calories vs Carbohydrates in Starbucks Drinks", x.want = "Calories", y.want = "Carboyhydrates" ){
+  ggplot() + geom_point(aes(x=variable.1, y=variable.2), col = color.want) + labs(title = title.want, x= x.want, y = y.want)
+}
+
+#using my function to graph calories vs carbohydrates
+bivariate.graph(starbucks.drinks$Calories,starbucks.drinks$Total.Carbohydrates..g.)
+```
+
+The plot above shows that the calories and carbohydrates in Starbucks drinks are positively correlated with each other. The correlation coefficient is `r cor(starbucks.drinks$Calories,starbucks.drinks$Total.Carbohydrates..g.)` also be calculated to confirm this strong positive correlation.
+
+```{r, echo = FALSE}
+#using my function to graph calories vs cholesterol
+bivariate.graph(starbucks.drinks$Calories,starbucks.drinks$Cholesterol..mg., color.want = "chartreuse4", title.want = "Calories vs Cholesterol in Starbucks Drinks", y.want = "Cholesterol")
+```
+
+The plot above shows that the calories and cholesterol in Starbucks drinks are positively correlated with each other. The correlation coefficient is `r cor(starbucks.drinks$Calories,starbucks.drinks$Cholesterol..mg.)` also be calculated to confirm this strong positive correlation.
+
+```{r, echo = FALSE}
+#using my function to graph calories vs sugar
+bivariate.graph(starbucks.drinks$Calories,starbucks.drinks$Sugars..g., color.want = "darkolivegreen" , title.want = "Calories vs Sugar in Starbucks Drinks", y.want = "Sugar")
+```
+
+The plot above shows that the calories and sugar in Starbucks drinks are positively correlated with each other. The correlation coefficient is `r cor(starbucks.drinks$Calories,starbucks.drinks$Sugars..g.)` also be calculated to confirm this strong positive correlation.
+
+```{r, echo = FALSE}
+#using my function to graph cholesterol vs sugar
+bivariate.graph(starbucks.drinks$Cholesterol..mg.,starbucks.drinks$Sugars..g., color.want = "darkolivegreen4", title.want = "Cholesterol vs Sugar in Starbucks Drinks", x.want = "Cholesterol", y.want = "Sugar")
+```
+
+The plot above shows that the cholesterol and sugar in Starbucks drinks are positively correlated with each other. The correlation coefficient is `r cor(starbucks.drinks$Cholesterol..mg.,starbucks.drinks$Sugars..g.)` also be calculated to confirm this strong positive correlation.
+
+```{r,echo = FALSE}
+#graphing beverage prep and calories using box plots
+ggplot() + geom_boxplot(aes(x=starbucks.drinks$Beverage_prep, y=starbucks.drinks$Calories), col = 'black') + labs(title = "Beverage Prep and Calories", x = "Beverage Prep", y = "Calories")
+```
+
+The box plots above show the distribution of calories in each beverage preparation category. It can be seen that 2% milk has the highest calories while Doppio and Soy Milk had the lease amount of calories.
+
+### 7. Functions and For Loops Usage
+
+The first function I created was to graph my univariate numerical data. It is called graph.plot and I used it in question #5. The second function I created was to graph my bivariate numerical scatter plot data. It is called bivariate.graph and I used it in question #6. I created a for loop with an if/else statement to create a new variable that states if the drink is above or below the recommended amount of daily cholesterol intake (daily intake value is from References section) in question #4.
+
+### 8. Description of any NA values
+
+In my clean data set, there are no NA values. I chose the columns and variables that did not contain NA values for ease of graphing and analyzing the data.
+
+### 9. Debugging Summary
+
+I had trouble running certain graphs and knitting them. To fix this issue, I retraced my steps and realized that I had to run ggplot in the library again. Another experience I had with debugging was with my if else statement in my for loop. I  was missing a bracket and I found this out by going line by line through the code to see where I messed up.
+
+### 11. Refrences
+
+Kaggle: https://www.kaggle.com/datasets/syedasimalishah/starbucks-drinks 
+
+Ggplot Colors Palate: https://r-graph-gallery.com/42-colors-names.html 
+
+How Many Calories Do Adults Need?:  https://www.eatright.org/food/nutrition/dietary-guidelines-and-myplate/how-many-calories-do-adults-need 
+
+How Many Carbohydrates are Needed for Daily Intake?: https://www.mayoclinic.org/healthy-lifestyle/nutrition-and-healthy-eating/in-depth/carbohydrates/art-20045705#:~:text=The%20Dietary%20Guidelines%20for%20Americans,grams%20of%20carbs%20a%20day. 
+
+Daily Intake of Sugar Recommendation: https://www.hsph.harvard.edu/nutritionsource/carbohydrates/added-sugar-in-the-diet/#:~:text=The%20AHA%20suggests%20a%20stricter,of%20sugar)%20for%20most%20men. 
+
+Daily Intake of Cholesterol Recommendation: https://www.ucsfhealth.org/education/cholesterol-content-of-foods#:~:text=If%20you%20have%20risk%20factors,than%20300%20milligrams%20a%20day. 
+
+### 12. Repository Link
+
+https://github.com/amshulag/Project-2 
